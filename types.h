@@ -15,13 +15,14 @@ typedef enum {
 
 // System calls requested by application process
 typedef enum {
-  SYSCALL_NONE, // No syscall requested
-  SYSCALL_D1_R, // Read from device D1
-  SYSCALL_D1_W, // Write to device D1
-  SYSCALL_D1_X, // Execute on device D1
-  SYSCALL_D2_R, // Read from device D2
-  SYSCALL_D2_W, // Write to device D2
-  SYSCALL_D2_X  // Execute on device D2
+  SYSCALL_NONE,        // No syscall requested
+  SYSCALL_D1_R,        // Read from device D1
+  SYSCALL_D1_W,        // Write to device D1
+  SYSCALL_D1_X,        // Execute on device D1
+  SYSCALL_D2_R,        // Read from device D2
+  SYSCALL_D2_W,        // Write to device D2
+  SYSCALL_D2_X,        // Execute on device D2
+  SYSCALL_APP_FINISHED // Application process has finished
 } syscall_t;
 // String description of the syscalls
 extern const char *SYSCALL_STR[];
@@ -39,7 +40,7 @@ extern const char *PROC_STATE_STR[];
 // Contains information about each application process.
 // These are all set by kernelsim
 typedef struct {
-  int app_id; // Internal app ID, starting from 1
+  int app_id; // App ID, same as apps array index
   pid_t app_pid;
   int D1_access_count; // Amount of syscalls to D1
   int D2_access_count; // Amount of syscalls to D2
