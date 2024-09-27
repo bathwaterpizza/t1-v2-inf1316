@@ -138,7 +138,7 @@ int main(void) {
       char pipe_read_str[10];
       char pipe_write_str[10];
       sprintf(shm_id_str, "%d", shm_id);
-      sprintf(app_id_str, "%d", i + 1);
+      sprintf(app_id_str, "%d", i);
       sprintf(pipe_read_str, "%d", apps_pipe_fd[PIPE_READ]);
       sprintf(pipe_write_str, "%d", apps_pipe_fd[PIPE_WRITE]);
 
@@ -174,7 +174,8 @@ int main(void) {
     exit(2);
   } else if (intersim_pid == 0) {
     // child
-    // passing pipe fds as args
+    // passing pipe fds as args, as well as the apps read pipe that needs to be
+    // closed, as it's being inherited
     char pipe_read_str[10];
     char pipe_write_str[10];
     char app_pipe_read_str[10];
@@ -198,6 +199,8 @@ int main(void) {
   while (kernel_running) {
     irq_t irq;
     int syscall_app_id;
+    // TODO: implement this, use select() to read from both pipes non-blocking
+    // and stuff
     read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
 
     if (irq == IRQ_TIME) {
