@@ -26,7 +26,7 @@ static void send_device_int(int *fd, irq_t irq) {
 
 int main(int argc, char **argv) {
   dmsg("Intersim booting");
-  assert(argc == 3);
+  assert(argc == 4);
   srand(time(NULL));
   if (signal(SIGTERM, handle_sigterm) == SIG_ERR) {
     fprintf(stderr, "Signal error\n");
@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
   // Get pipe fds from parent
   int interpipe_fd[] = {atoi(argv[1]), atoi(argv[2])};
   close(interpipe_fd[PIPE_READ]); // close read
+  close(atoi(argv[3]));           // close app read inherited from parent
 
   // Start paused
   raise(SIGSTOP);

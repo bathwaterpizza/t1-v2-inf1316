@@ -12,7 +12,7 @@
 static int *shm;
 static int app_id;
 static int counter = 0;
-static int syscall_pipe[2];
+static int syscall_pipe_fd[2];
 
 // Called when app receives SIGUSR1 from kernelsim
 // Saves state in shm and raises SIGSTOP
@@ -70,7 +70,7 @@ static void handle_kernel_cont(int signum) {
 // Cleanup and exit
 static void handle_sigterm(int signum) {
   dmsg("App %d stopping from SIGTERM", app_id + 1);
-  close(syscall_pipe[PIPE_WRITE]); // close write
+  close(syscall_pipe_fd[PIPE_WRITE]); // close write
   shmdt(shm);
   exit(0);
 }
@@ -84,7 +84,7 @@ static void send_syscall(syscall_t call) {
 
   // Set desired syscall and send request to kernelsim
   set_app_syscall(shm, app_id, call);
-  write(syscall_pipe[PIPE_WRITE], &app_id, sizeof(int));
+  write(syscall_pipe_fd[PIPE_WRITE], &app_id, sizeof(int));
 
   // Wait for SIGUSR1->SIGSTOP
   pause();
@@ -96,9 +96,9 @@ int main(int argc, char **argv) {
   app_id = atoi(argv[2]);
 
   // Pipe setup
-  syscall_pipe[PIPE_READ] = atoi(argv[3]);
-  syscall_pipe[PIPE_WRITE] = atoi(argv[4]);
-  close(syscall_pipe[PIPE_READ]); // close read
+  syscall_pipe_fd[PIPE_READ] = atoi(argv[3]);
+  syscall_pipe_fd[PIPE_WRITE] = atoi(argv[4]);
+  close(syscall_pipe_fd[PIPE_READ]); // close read
 
   dmsg("App %d booting", app_id + 1);
   assert(argc == 5);
@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
   set_app_counter(shm, app_id, counter);
 
   // cleanup
-  close(syscall_pipe[PIPE_WRITE]); // close read
+  close(syscall_pipe_fd[PIPE_WRITE]); // close read
   shmdt(shm);
   msg("App %d finished", app_id + 1);
 
