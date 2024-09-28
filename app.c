@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 
   dmsg("App %d booting", app_id + 1);
   assert(argc == 5);
-  srand(time(NULL)); // reset seed
+  srand(time(NULL) ^ (getpid() << 16)); // reset seed
 
   // Register signal callbacks
   if (signal(SIGUSR1, handle_kernel_stop) == SIG_ERR) {

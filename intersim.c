@@ -27,7 +27,7 @@ static void send_device_int(int *fd, irq_t irq) {
 int main(int argc, char **argv) {
   dmsg("Intersim booting");
   assert(argc == 4);
-  srand(time(NULL));
+  srand(time(NULL) ^ (getpid() << 16)); // reset seed
   if (signal(SIGTERM, handle_sigterm) == SIG_ERR) {
     fprintf(stderr, "Signal error\n");
     exit(4);

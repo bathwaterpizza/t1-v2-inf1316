@@ -194,7 +194,7 @@ static void dispatch_next_app(void) {
 }
 
 int main(void) {
-  srand(time(NULL));
+  srand(time(NULL) ^ (getpid() << 16)); // reset seed
   dmsg("Kernel booting");
   // Validate some configs
   assert(APP_MAX_PC > 0);
