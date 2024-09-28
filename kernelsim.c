@@ -27,17 +27,6 @@ static proc_info_t apps[APP_AMOUNT];
 // Shared memory segment between apps and kernel
 static int *shm;
 
-// Returns the appid of the current running app
-static int get_running_appid(void) {
-  for (int i = 0; i < APP_AMOUNT; i++) {
-    if (apps[i].state == RUNNING) {
-      return apps[i].app_id;
-    }
-  }
-
-  return -1;
-}
-
 // Updates the stats of an app according to the syscall type
 static void update_app_stats(syscall_t call, int app_id) {
   switch (call) {
@@ -69,6 +58,53 @@ static void update_app_stats(syscall_t call, int app_id) {
     fprintf(stderr, "update_app_stats error\n");
     exit(7);
   }
+}
+
+// Returns whether all apps have finished executing
+static bool all_apps_finished(void) {
+  for (int i = 0; i < APP_AMOUNT; i++) {
+    if (apps[i].state != FINISHED) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Handles and incoming syscall from the apps pipe
+static void handle_syscall(int app_id) {
+  assert(apps[app_id].state == RUNNING);
+
+  syscall_t call = get_app_syscall(shm, app_id);
+
+  assert(call != SYSCALL_NONE);
+
+  if (call == SYSCALL_APP_FINISHED) {
+    dmsg("Kernel got finished app %d", app_id + 1);
+
+    apps[app_id].state = FINISHED;
+
+    if (all_apps_finished()) {
+      dmsg("All apps finished");
+      kernel_running = false;
+      kill(intersim_pid, SIGTERM);
+    }
+
+    return;
+  }
+
+  // Device syscall. Save, block, update stats, enqueue.
+  kill(apps[app_id].app_pid, SIGUSR1); // save state
+  apps[app_id].state = BLOCKED;
+  update_app_stats(call, app_id);
+
+  if (call >= SYSCALL_D1_R && call <= SYSCALL_D1_X) {
+    enqueue(D1_app_queue, app_id);
+  } else {
+    enqueue(D2_app_queue, app_id);
+  }
+
+  dmsg("App %d blocked for syscall: %s", app_id + 1, SYSCALL_STR[call]);
 }
 
 // Called on Ctrl+C.
@@ -219,6 +255,8 @@ int main(void) {
     if (FD_ISSET(apps_pipe_fd[PIPE_READ], &fdset)) {
       // Got syscall from app
       read(apps_pipe_fd[PIPE_READ], &syscall_app_id, sizeof(int));
+
+      handle_syscall(syscall_app_id);
     }
     if (FD_ISSET(interpipe_fd[PIPE_READ], &fdset)) {
       // Got interrupt from intersim
@@ -244,7 +282,7 @@ int main(void) {
         assert(apps[app_id].state == BLOCKED);
         apps[app_id].state = PAUSED;
 
-        dmsg("Kernel unblocked app %d", app_id);
+        dmsg("Kernel unblocked app %d", app_id + 1);
       }
     }
   }
