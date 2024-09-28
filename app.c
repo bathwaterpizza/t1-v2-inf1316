@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
   // Begin paused
   raise(SIGSTOP);
 
-  dmsg("App %d running", app_id + 1);
+  msg("App %d running", app_id + 1);
 
   // Main application loop
   while (counter < APP_MAX_PC) {

@@ -82,12 +82,12 @@ static int get_running_appid(void) {
   return -1;
 }
 
-// Returns how many apps have finished so far
-static int finished_apps_amount(void) {
+// Returns how many apps are either blocked or have finished
+static int amount_apps_not_ready(void) {
   int count = 0;
 
   for (int i = 0; i < APP_AMOUNT; i++) {
-    if (apps[i].state == FINISHED) {
+    if (apps[i].state == FINISHED || apps[i].state == BLOCKED) {
       count++;
     }
   }
@@ -168,7 +168,7 @@ static void dispatch_next_app(void) {
   // to finish here
 
   // Pause current app unless it's the last one
-  if (cur_app_id != -1 && finished_apps_amount() < (APP_AMOUNT - 1)) {
+  if (cur_app_id != -1 && amount_apps_not_ready() < (APP_AMOUNT - 1)) {
     // Pause and insert into dispatch queue
     assert(apps[cur_app_id].state == RUNNING);
     dmsg("Dispatcher pausing app %d", cur_app_id + 1);
@@ -297,7 +297,7 @@ int main(void) {
   // Wait for all processes to boot, start kernel and intersim
   sleep(1);
   kernel_running = true;
-  dmsg("Kernel running");
+  msg("Kernel running");
   kill(intersim_pid, SIGCONT);
 
   // Setup for reading both pipes without blocking

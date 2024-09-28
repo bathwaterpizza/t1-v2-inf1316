@@ -1,7 +1,14 @@
-# Ignore all, then don't ignore files with extensions, and dirs
+# Ignore all
 *
+
+# Don't ignore files with extensions
 !*.*
+
+# Don't ignore directories
 !*/
+
+# Don't ignore Makefile
+!Makefile
 
 # Ignore all executables
 *.[eE][xX][eE]

@@ -14,7 +14,7 @@ static bool intersim_running;
 // Called by parent on Ctrl+C or all apps finished.
 // Cleanup and exit
 static void handle_sigterm(int signum) {
-  msg("Intersim stopping from SIGTERM");
+  dmsg("Intersim stopping from SIGTERM");
 
   intersim_running = false;
 }
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
   raise(SIGSTOP);
 
   intersim_running = true;
-  dmsg("Intersim running");
+  msg("Intersim running");
 
   // Main loop
   while (intersim_running) {
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
   }
 
   close(interpipe_fd[PIPE_WRITE]);
-  dmsg("Intersim finished");
+  msg("Intersim finished");
 
   return 0;
 }
