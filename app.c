@@ -9,18 +9,25 @@
 #include <time.h>
 #include <unistd.h>
 
+// Shared memory segment between apps and kernel
 static int *shm;
+// App ID received from kernelsim
 static int app_id;
+// Internal program counter to demonstrate context switching
 static int counter = 0;
+// Pipe fds for sending a syscall request to kernelsim
 static int syscall_pipe_fd[2];
 
 // Called when app receives SIGUSR1 from kernelsim
-// Saves state in shm and raises SIGSTOP
+// Saves context in shm and raises SIGSTOP
 static void handle_kernel_stop(int signum) {
   msg("App %d stopped at counter %d", app_id + 1, counter);
 
   // Save program counter state to shm
   set_app_counter(shm, app_id, counter);
+
+  // Simulate data loss
+  counter = 0;
 
   // Wait for continue from kernelsim
   raise(SIGSTOP);
@@ -52,10 +59,10 @@ static syscall_t rand_syscall(void) {
 // Called when app receives SIGCONT from kernelsim
 // Restores state from shm
 static void handle_kernel_cont(int signum) {
-  msg("App %d resumed at counter %d", app_id + 1, counter);
-
   // Restore program counter state from shm
   counter = get_app_counter(shm, app_id);
+
+  msg("App %d resumed at counter %d", app_id + 1, counter);
 
   // Restore syscall state from shm
   if (get_app_syscall(shm, app_id) != SYSCALL_NONE) {
@@ -124,7 +131,7 @@ int main(int argc, char **argv) {
   // Begin paused
   raise(SIGSTOP);
 
-  msg("App %d running", app_id + 1);
+  dmsg("App %d running", app_id + 1);
 
   // Main application loop
   while (counter < APP_MAX_PC) {
