@@ -2,6 +2,8 @@
 #include "types.h"
 #include "util.h"
 #include <assert.h>
+#include <fcntl.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,11 +16,11 @@
 
 // Whether the kernel is running and reading the interrupt controller pipe
 static bool kernel_running;
-// Queue for apps waiting on device D1
+// Queue of apps waiting on device D1
 static queue_t *D1_app_queue;
-// Queue for apps waiting on device D2
+// Queue of apps waiting on device D2
 static queue_t *D2_app_queue;
-// Queue for apps waiting to run
+// Round-robin queue of apps waiting to run
 static queue_t *dispatch_queue;
 // PID of the intersim process
 static pid_t intersim_pid;
@@ -26,9 +28,11 @@ static pid_t intersim_pid;
 static proc_info_t apps[APP_AMOUNT];
 // Shared memory segment between apps and kernel
 static int *shm;
+// Semaphore to avoid a syscall while the dispatcher is making a decision
+static sem_t *dispatch_sem;
 
 // Updates the stats of an app according to the syscall type
-static void update_app_stats(syscall_t call, int app_id) {
+static inline void update_app_stats(syscall_t call, int app_id) {
   switch (call) {
   case SYSCALL_D1_R:
     apps[app_id].D1_access_count++;
@@ -95,6 +99,10 @@ static int amount_apps_not_ready(void) {
   return count;
 }
 
+static inline bool has_pending_syscall(int app_id) {
+  return get_app_syscall(shm, app_id) != SYSCALL_NONE;
+}
+
 // Handles and incoming syscall from the apps pipe
 static void handle_syscall(int app_id) {
   assert(apps[app_id].state == RUNNING);
@@ -150,9 +158,8 @@ static void handle_sigint(int signum) {
   kernel_running = false;
 }
 
-static void dispatch_next_app(void) {
-  // TODO: Semaphores
-
+// Stops current running app and dispatch the next app in queue
+static void dispatch(void) {
   // Check if we're done
   if (all_apps_finished()) {
     dmsg("Dispatcher: All apps finished");
@@ -164,11 +171,9 @@ static void dispatch_next_app(void) {
 
   int cur_app_id = get_running_appid();
 
-  // TODO: Could add another semaphore for after app exits main loop and goes on
-  // to finish here
-
-  // Pause current app unless it's the last one
-  if (cur_app_id != -1 && amount_apps_not_ready() < (APP_AMOUNT - 1)) {
+  // Pause app unless it's the only ready one, or has a pending syscall
+  if (cur_app_id != -1 && amount_apps_not_ready() < (APP_AMOUNT - 1) &&
+      !has_pending_syscall(cur_app_id)) {
     // Pause and insert into dispatch queue
     assert(apps[cur_app_id].state == RUNNING);
     dmsg("Dispatcher pausing app %d", cur_app_id + 1);
@@ -216,6 +221,13 @@ int main(void) {
 
   shm = (int *)shmat(shm_id, NULL, 0);
   memset(shm, 0, SHM_SIZE);
+
+  // Create semaphore for avoiding race conditions
+  dispatch_sem = sem_open(DISPATCH_SEM_NAME, O_CREAT, 0666, 1);
+  if (dispatch_sem == SEM_FAILED) {
+    fprintf(stderr, "Semaphore error\n");
+    exit(11);
+  }
 
   // Create apps pipe
   int apps_pipe_fd[2];
@@ -332,11 +344,11 @@ int main(void) {
       read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
 
       if (irq == IRQ_TIME) {
+        sem_wait(dispatch_sem);
         dmsg("Kernel got time interrupt");
 
-        // TODO: Semaphores to excluse with syscall decision on apps
-        // TODO: Scheduling function
-        dispatch_next_app();
+        dispatch();
+        sem_post(dispatch_sem);
       } else {
         assert(irq == IRQ_D1 || irq == IRQ_D2);
         // Dequeue app from device queue and change its blocked state
@@ -367,6 +379,8 @@ int main(void) {
   shmctl(shm_id, IPC_RMID, NULL);
   close(interpipe_fd[PIPE_READ]);
   close(apps_pipe_fd[PIPE_READ]);
+  sem_close(dispatch_sem);
+  sem_unlink(DISPATCH_SEM_NAME);
   msg("Kernel finished");
 
   return 0;

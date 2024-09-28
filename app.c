@@ -2,6 +2,7 @@
 #include "types.h"
 #include "util.h"
 #include <assert.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,8 @@ static int app_id;
 static int counter = 0;
 // Pipe fds for sending a syscall request to kernelsim
 static int syscall_pipe_fd[2];
+// Semaphore to avoid a syscall while the dispatcher is making a decision
+static sem_t *dispatch_sem;
 
 // Called when app receives SIGUSR1 from kernelsim
 // Saves context in shm and raises SIGSTOP
@@ -34,7 +37,7 @@ static void handle_kernel_stop(int signum) {
 }
 
 // Generate a random syscall from options (D1/D2 + R/W/X)
-static syscall_t rand_syscall(void) {
+static inline syscall_t rand_syscall(void) {
   int r = rand();
 
   switch (r % 6) {
@@ -77,8 +80,12 @@ static void handle_kernel_cont(int signum) {
 // Cleanup and exit
 static void handle_sigterm(int signum) {
   dmsg("App %d stopping from SIGTERM", app_id + 1);
+
+  // cleanup
   close(syscall_pipe_fd[PIPE_WRITE]); // close write
   shmdt(shm);
+  sem_close(dispatch_sem);
+  sem_unlink(DISPATCH_SEM_NAME);
   exit(0);
 }
 
@@ -94,6 +101,7 @@ static void send_syscall(syscall_t call) {
   write(syscall_pipe_fd[PIPE_WRITE], &app_id, sizeof(int));
 
   // Wait for SIGUSR1->SIGSTOP
+  sem_post(dispatch_sem);
   pause();
 }
 
@@ -128,6 +136,13 @@ int main(int argc, char **argv) {
   // Attach to kernelsim shm
   shm = (int *)shmat(shm_id, NULL, 0);
 
+  // Get semaphore created by kernelsim
+  sem_t *dispatch_sem = sem_open(DISPATCH_SEM_NAME, 0);
+  if (dispatch_sem == SEM_FAILED) {
+    fprintf(stderr, "Semaphore error\n");
+    exit(11);
+  }
+
   // Begin paused
   raise(SIGSTOP);
 
@@ -137,27 +152,32 @@ int main(int argc, char **argv) {
   while (counter < APP_MAX_PC) {
     usleep((APP_SLEEP_TIME_MS / 2) * 1000);
 
-    // TODO: semaphores for concurrency
+    sem_wait(dispatch_sem);
     if (rand() % 100 < APP_SYSCALL_PROB) {
       send_syscall(rand_syscall());
+    } else {
+      sem_post(dispatch_sem);
     }
 
     counter++;
-    dmsg("App %d counter is now %d", app_id + 1, counter);
+    dmsg("App %d counter increased to %d", app_id + 1, counter);
 
     usleep((APP_SLEEP_TIME_MS / 2) * 1000);
   }
 
   // update context before exiting
   // write to notify that app finished
-  // TODO: semaphore here too probably
+  sem_wait(dispatch_sem);
   set_app_syscall(shm, app_id, SYSCALL_APP_FINISHED);
   set_app_counter(shm, app_id, counter);
   write(syscall_pipe_fd[PIPE_WRITE], &app_id, sizeof(int));
+  sem_post(dispatch_sem);
 
   // cleanup
   close(syscall_pipe_fd[PIPE_WRITE]); // close read
   shmdt(shm);
+  sem_close(dispatch_sem);
+  sem_unlink(DISPATCH_SEM_NAME);
   msg("App %d finished", app_id + 1);
 
   return 0;

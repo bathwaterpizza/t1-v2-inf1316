@@ -20,11 +20,6 @@ static void handle_sigterm(int signum) {
   intersim_running = false;
 }
 
-static void send_device_int(int *fd, irq_t irq) {
-  write(fd[PIPE_WRITE], &irq, sizeof(irq_t));
-  dmsg("Intersim sent device interrupt D%d", irq);
-}
-
 int main(int argc, char **argv) {
   dmsg("Intersim booting");
   assert(argc == 4);
@@ -57,10 +52,16 @@ int main(int argc, char **argv) {
 
     // Randomly send D1 and D2 interrupts
     if (rand() % 100 < INTERSIM_D1_INT_PROB) {
-      send_device_int(interpipe_fd, IRQ_D1);
+      irq = IRQ_D1;
+
+      write(interpipe_fd[PIPE_WRITE], &irq, sizeof(irq_t));
+      dmsg("Intersim sent device interrupt D%d", irq);
     }
     if (rand() % 100 < INTERSIM_D2_INT_PROB) {
-      send_device_int(interpipe_fd, IRQ_D2);
+      irq = IRQ_D2;
+
+      write(interpipe_fd[PIPE_WRITE], &irq, sizeof(irq_t));
+      dmsg("Intersim sent device interrupt D%d", irq);
     }
 
     usleep((INTERSIM_SLEEP_TIME_MS / 2) * 1000);
