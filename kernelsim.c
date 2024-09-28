@@ -82,6 +82,19 @@ static int get_running_appid(void) {
   return -1;
 }
 
+// Returns how many apps have finished so far
+static int finished_apps_amount(void) {
+  int count = 0;
+
+  for (int i = 0; i < APP_AMOUNT; i++) {
+    if (apps[i].state == FINISHED) {
+      count++;
+    }
+  }
+
+  return count;
+}
+
 // Handles and incoming syscall from the apps pipe
 static void handle_syscall(int app_id) {
   assert(apps[app_id].state == RUNNING);
@@ -96,7 +109,7 @@ static void handle_syscall(int app_id) {
     apps[app_id].state = FINISHED;
 
     if (all_apps_finished()) {
-      dmsg("All apps finished");
+      dmsg("Syscall handler: All apps finished");
       kernel_running = false;
       kill(intersim_pid, SIGTERM);
     }
@@ -140,7 +153,7 @@ static void dispatch_next_app(void) {
 
   // Check if we're done
   if (all_apps_finished()) {
-    dmsg("All apps finished");
+    dmsg("Dispatcher: All apps finished");
     kernel_running = false;
     kill(intersim_pid, SIGTERM);
 
@@ -150,8 +163,33 @@ static void dispatch_next_app(void) {
   int cur_app_id = get_running_appid();
   assert(cur_app_id != -1);
 
-  // TODO: Could add a semaphore for after app exits main loop and goes on to
-  // finish here
+  // TODO: Could add another semaphore for after app exits main loop and goes on
+  // to finish here
+
+  // Pause current app unless it's the last one
+  if (cur_app_id != -1 && (finished_apps_amount() - 1) < APP_AMOUNT) {
+    // Pause and insert into dispatch queue
+    assert(apps[cur_app_id].state == RUNNING);
+    dmsg("Dispatcher pausing app %d", cur_app_id + 1);
+
+    apps[cur_app_id].state = PAUSED;
+    kill(apps[cur_app_id].app_pid, SIGUSR1);
+    enqueue(dispatch_queue, cur_app_id);
+  } else {
+    // No apps to pause
+    dmsg("Dispatcher found no apps to pause");
+  }
+
+  // Dispatch next app
+  int next_app_id = dequeue(dispatch_queue);
+  if (next_app_id != -1) {
+    assert(apps[next_app_id].state == PAUSED);
+    dmsg("Dispatcher continued app %d", next_app_id + 1);
+    apps[next_app_id].state = RUNNING;
+    kill(apps[next_app_id].app_pid, SIGCONT);
+  } else {
+    dmsg("Dispatcher found no apps to continue");
+  }
 }
 
 int main(void) {
