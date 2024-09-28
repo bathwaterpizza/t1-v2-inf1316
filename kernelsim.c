@@ -195,33 +195,34 @@ int main(void) {
   dmsg("Kernel running");
   kill(intersim_pid, SIGCONT);
 
+  // Setup for reading both pipes without blocking
+  fd_set fdset;
+  int max_fd = interpipe_fd[PIPE_READ] > apps_pipe_fd[PIPE_READ]
+                   ? interpipe_fd[PIPE_READ]
+                   : apps_pipe_fd[PIPE_READ];
+
   // Main loop for reading pipes
   while (kernel_running) {
     irq_t irq;
     int syscall_app_id;
-    // TODO: implement this, use select() to read from both pipes non-blocking
-    // and stuff
-    read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
 
-    if (irq == IRQ_TIME) {
-      dmsg("Kernel received timeslice interrupt");
+    // Read both pipes
+    FD_ZERO(&fdset);
+    FD_SET(apps_pipe_fd[PIPE_READ], &fdset);
+    FD_SET(interpipe_fd[PIPE_READ], &fdset);
 
-      schedule_next_app();
-    } else {
-      assert(irq == IRQ_D1 || irq == IRQ_D2);
-      dmsg("Kernel received device interrupt D%d", irq);
+    if (select(max_fd + 1, &fdset, NULL, NULL, NULL) < 0) {
+      fprintf(stderr, "Select error\n");
+      exit(10);
+    }
 
-      // Dequeue app and change its blocked state
-      int app_id =
-          (irq == IRQ_D1) ? dequeue(D1_app_queue) : dequeue(D2_app_queue);
-
-      if (app_id == -1)
-        continue; // queue is empty
-
-      assert(apps[app_id - 1].state == BLOCKED);
-      apps[app_id - 1].state = PAUSED;
-
-      dmsg("Kernel unblocked app %d", app_id);
+    if (FD_ISSET(apps_pipe_fd[PIPE_READ], &fdset)) {
+      // Got syscall from app
+      read(apps_pipe_fd[PIPE_READ], &syscall_app_id, sizeof(int));
+    }
+    if (FD_ISSET(interpipe_fd[PIPE_READ], &fdset)) {
+      // Got interrupt from intersim
+      read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
     }
   }
 
@@ -233,7 +234,7 @@ int main(void) {
   shmctl(shm_id, IPC_RMID, NULL);
   close(interpipe_fd[PIPE_READ]);
   close(apps_pipe_fd[PIPE_READ]);
-  dmsg("Kernel finished");
+  msg("Kernel finished");
 
   return 0;
 }
