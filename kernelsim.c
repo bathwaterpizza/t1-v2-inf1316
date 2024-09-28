@@ -138,7 +138,9 @@ static void handle_sigint(int signum) {
 
   // kill all apps
   for (int i = 0; i < APP_AMOUNT; i++) {
-    kill(apps[i].app_pid, SIGTERM);
+    if (apps[i].state != FINISHED) {
+      kill(apps[i].app_pid, SIGTERM);
+    }
   }
 
   // kill intersim
@@ -161,13 +163,12 @@ static void dispatch_next_app(void) {
   }
 
   int cur_app_id = get_running_appid();
-  assert(cur_app_id != -1);
 
   // TODO: Could add another semaphore for after app exits main loop and goes on
   // to finish here
 
   // Pause current app unless it's the last one
-  if (cur_app_id != -1 && (finished_apps_amount() - 1) < APP_AMOUNT) {
+  if (cur_app_id != -1 && finished_apps_amount() < (APP_AMOUNT - 1)) {
     // Pause and insert into dispatch queue
     assert(apps[cur_app_id].state == RUNNING);
     dmsg("Dispatcher pausing app %d", cur_app_id + 1);
@@ -338,7 +339,8 @@ int main(void) {
         dispatch_next_app();
       } else {
         assert(irq == IRQ_D1 || irq == IRQ_D2);
-        // Dequeue app and change its blocked state
+        // Dequeue app from device queue and change its blocked state
+        // Then add it to the dispatch queue
         dmsg("Kernel got device interrupt D%d", irq);
         int app_id =
             (irq == IRQ_D1) ? dequeue(D1_app_queue) : dequeue(D2_app_queue);
@@ -350,6 +352,7 @@ int main(void) {
 
         assert(apps[app_id].state == BLOCKED);
         apps[app_id].state = PAUSED;
+        enqueue(dispatch_queue, app_id);
 
         dmsg("Kernel unblocked app %d", app_id + 1);
       }

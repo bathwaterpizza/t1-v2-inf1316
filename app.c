@@ -142,9 +142,11 @@ int main(int argc, char **argv) {
   }
 
   // update context before exiting
+  // write to notify that app finished
   // TODO: semaphore here too probably
   set_app_syscall(shm, app_id, SYSCALL_APP_FINISHED);
   set_app_counter(shm, app_id, counter);
+  write(syscall_pipe_fd[PIPE_WRITE], &app_id, sizeof(int));
 
   // cleanup
   close(syscall_pipe_fd[PIPE_WRITE]); // close read
