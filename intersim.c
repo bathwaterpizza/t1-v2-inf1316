@@ -67,6 +67,8 @@ int main(int argc, char **argv) {
     usleep((INTERSIM_SLEEP_TIME_MS / 2) * 1000);
   }
 
+  dmsg("Intersim left main loop");
+
   close(interpipe_fd[PIPE_WRITE]);
   msg("Intersim finished");
 

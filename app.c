@@ -85,7 +85,6 @@ static void handle_sigterm(int signum) {
   close(syscall_pipe_fd[PIPE_WRITE]); // close write
   shmdt(shm);
   sem_close(dispatch_sem);
-  sem_unlink(DISPATCH_SEM_NAME);
   exit(0);
 }
 
@@ -104,6 +103,19 @@ static void send_syscall(syscall_t call) {
   sem_post(dispatch_sem);
   pause();
 }
+
+#ifdef DEBUG
+static inline void semval(void) {
+  int value;
+
+  if (sem_getvalue(dispatch_sem, &value) == -1) {
+    fprintf(stderr, "semval error\n");
+    exit(20);
+  }
+
+  dmsg("Semaphore value: %d", value);
+}
+#endif
 
 int main(int argc, char **argv) {
   // Get IDs from command line
@@ -152,6 +164,7 @@ int main(int argc, char **argv) {
   while (counter < APP_MAX_PC) {
     usleep((APP_SLEEP_TIME_MS / 2) * 1000);
 
+    semval();
     sem_wait(dispatch_sem);
     if (rand() % 100 < APP_SYSCALL_PROB) {
       send_syscall(rand_syscall());
@@ -165,8 +178,11 @@ int main(int argc, char **argv) {
     usleep((APP_SLEEP_TIME_MS / 2) * 1000);
   }
 
+  msg("App %d left main loop", app_id + 1);
+
   // update context before exiting
   // write to notify that app finished
+  semval();
   sem_wait(dispatch_sem);
   set_app_syscall(shm, app_id, SYSCALL_APP_FINISHED);
   set_app_counter(shm, app_id, counter);
@@ -177,7 +193,7 @@ int main(int argc, char **argv) {
   close(syscall_pipe_fd[PIPE_WRITE]); // close read
   shmdt(shm);
   sem_close(dispatch_sem);
-  sem_unlink(DISPATCH_SEM_NAME);
+
   msg("App %d finished", app_id + 1);
 
   return 0;

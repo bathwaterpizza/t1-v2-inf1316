@@ -4,11 +4,11 @@
 
 #define APP_AMOUNT 3 // How many application processes should be created
 #define APP_MAX_PC 5 // Program counter value at which the app process finishes
-#define APP_SLEEP_TIME_MS 400 // How long should one iteration of each app take
+#define APP_SLEEP_TIME_MS 347 // How long should one iteration of each app take
 #define APP_SYSCALL_PROB                                                       \
   15 // Percentage chance of app sending a syscall for each iteration
 
-#define INTERSIM_SLEEP_TIME_MS 200 // How long to generate an interrupt
+#define INTERSIM_SLEEP_TIME_MS 211 // How long to generate an interrupt
 #define INTERSIM_D1_INT_PROB                                                   \
   10 // Percentage chance of generating a D1 interrupt for each intersim
      // iteration

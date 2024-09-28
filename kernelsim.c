@@ -198,6 +198,19 @@ static void dispatch(void) {
   }
 }
 
+#ifdef DEBUG
+static inline void semval(void) {
+  int value;
+
+  if (sem_getvalue(dispatch_sem, &value) == -1) {
+    fprintf(stderr, "semval error\n");
+    exit(20);
+  }
+
+  dmsg("Semaphore value: %d", value);
+}
+#endif
+
 int main(void) {
   srand(time(NULL) ^ (getpid() << 16)); // reset seed
   dmsg("Kernel booting");
@@ -223,6 +236,7 @@ int main(void) {
   memset(shm, 0, SHM_SIZE);
 
   // Create semaphore for avoiding race conditions
+  sem_unlink(DISPATCH_SEM_NAME); // remove any existing semaphore
   dispatch_sem = sem_open(DISPATCH_SEM_NAME, O_CREAT, 0666, 1);
   if (dispatch_sem == SEM_FAILED) {
     fprintf(stderr, "Semaphore error\n");
@@ -344,6 +358,7 @@ int main(void) {
       read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
 
       if (irq == IRQ_TIME) {
+        semval();
         sem_wait(dispatch_sem);
         dmsg("Kernel got time interrupt");
 
@@ -371,6 +386,8 @@ int main(void) {
     }
   }
 
+  msg("Kernel left main loop");
+
   // Cleanup
   free_queue(D1_app_queue);
   free_queue(D2_app_queue);
@@ -381,6 +398,7 @@ int main(void) {
   close(apps_pipe_fd[PIPE_READ]);
   sem_close(dispatch_sem);
   sem_unlink(DISPATCH_SEM_NAME);
+
   msg("Kernel finished");
 
   return 0;
