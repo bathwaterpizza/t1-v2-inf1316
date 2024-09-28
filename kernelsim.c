@@ -223,6 +223,29 @@ int main(void) {
     if (FD_ISSET(interpipe_fd[PIPE_READ], &fdset)) {
       // Got interrupt from intersim
       read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
+
+      if (irq == IRQ_TIME) {
+        dmsg("Kernel got time interrupt");
+
+        // TODO: Semaphores to excluse with syscall decision on apps
+        // TODO: Scheduling function
+      } else {
+        assert(irq == IRQ_D1 || irq == IRQ_D2);
+        // Dequeue app and change its blocked state
+        dmsg("Kernel got device interrupt D%d", irq);
+        int app_id =
+            (irq == IRQ_D1) ? dequeue(D1_app_queue) : dequeue(D2_app_queue);
+
+        if (app_id == -1) {
+          dmsg("No apps waiting on D%d", irq);
+          continue;
+        }
+
+        assert(apps[app_id].state == BLOCKED);
+        apps[app_id].state = PAUSED;
+
+        dmsg("Kernel unblocked app %d", app_id);
+      }
     }
   }
 

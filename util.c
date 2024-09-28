@@ -26,6 +26,8 @@ void msg(const char *format, ...) {
   vprintf(format, args);
   va_end(args);
 
+  printf("\n");
+
   // Flush the output to ensure it's displayed immediately
   fflush(stdout);
 }
@@ -49,6 +51,8 @@ void dmsg(const char *format, ...) {
   va_start(args, format);
   vprintf(format, args);
   va_end(args);
+
+  printf("\n");
 
   // Flush the output to ensure it's displayed immediately
   fflush(stdout);
