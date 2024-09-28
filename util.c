@@ -59,22 +59,22 @@ void dmsg(const char *format, ...) {
 #endif
 }
 
-int get_app_counter(int *shm, int app_id) {
+inline int get_app_counter(int *shm, int app_id) {
   assert(shm != NULL);
   return *(shm + (app_id * 2));
 }
 
-syscall_t get_app_syscall(int *shm, int app_id) {
+inline syscall_t get_app_syscall(int *shm, int app_id) {
   assert(shm != NULL);
   return *(shm + 1 + (app_id * 2));
 }
 
-void set_app_counter(int *shm, int app_id, int value) {
+inline void set_app_counter(int *shm, int app_id, int value) {
   assert(shm != NULL);
   *(shm + (app_id * 2)) = value;
 }
 
-void set_app_syscall(int *shm, int app_id, syscall_t call) {
+inline void set_app_syscall(int *shm, int app_id, syscall_t call) {
   assert(shm != NULL);
   *(shm + 1 + (app_id * 2)) = (int)call;
 }

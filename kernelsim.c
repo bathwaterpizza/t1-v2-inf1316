@@ -71,6 +71,17 @@ static bool all_apps_finished(void) {
   return true;
 }
 
+// Returns the appid of the current running app
+static int get_running_appid(void) {
+  for (int i = 0; i < APP_AMOUNT; i++) {
+    if (apps[i].state == RUNNING) {
+      return apps[i].app_id;
+    }
+  }
+
+  return -1;
+}
+
 // Handles and incoming syscall from the apps pipe
 static void handle_syscall(int app_id) {
   assert(apps[app_id].state == RUNNING);
@@ -122,6 +133,25 @@ static void handle_sigint(int signum) {
 
   // and exit from main
   kernel_running = false;
+}
+
+static void dispatch_next_app(void) {
+  // TODO: Semaphores
+
+  // Check if we're done
+  if (all_apps_finished()) {
+    dmsg("All apps finished");
+    kernel_running = false;
+    kill(intersim_pid, SIGTERM);
+
+    return;
+  }
+
+  int cur_app_id = get_running_appid();
+  assert(cur_app_id != -1);
+
+  // TODO: Could add a semaphore for after app exits main loop and goes on to
+  // finish here
 }
 
 int main(void) {
@@ -267,6 +297,7 @@ int main(void) {
 
         // TODO: Semaphores to excluse with syscall decision on apps
         // TODO: Scheduling function
+        dispatch_next_app();
       } else {
         assert(irq == IRQ_D1 || irq == IRQ_D2);
         // Dequeue app and change its blocked state

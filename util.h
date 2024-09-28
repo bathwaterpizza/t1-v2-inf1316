@@ -9,16 +9,16 @@ void msg(const char *format, ...);
 void dmsg(const char *format, ...);
 
 // Get program counter value from shm for the given app_id
-int get_app_counter(int *shm, int app_id);
+inline int get_app_counter(int *shm, int app_id);
 
 // Get syscall request status from shm for the given app_id
-syscall_t get_app_syscall(int *shm, int app_id);
+inline syscall_t get_app_syscall(int *shm, int app_id);
 
 // Set program counter value in shm for the given app_id
-void set_app_counter(int *shm, int app_id, int value);
+inline void set_app_counter(int *shm, int app_id, int value);
 
 // Set syscall request status in shm for the given app_id
-void set_app_syscall(int *shm, int app_id, syscall_t call);
+inline void set_app_syscall(int *shm, int app_id, syscall_t call);
 
 // Allocates a queue for storing app_ids as ints
 queue_t *create_queue(void);
