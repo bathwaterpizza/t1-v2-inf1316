@@ -198,19 +198,6 @@ static void dispatch(void) {
   }
 }
 
-#ifdef DEBUG
-static inline void semval(void) {
-  int value;
-
-  if (sem_getvalue(dispatch_sem, &value) == -1) {
-    fprintf(stderr, "semval error\n");
-    exit(20);
-  }
-
-  dmsg("Semaphore value: %d", value);
-}
-#endif
-
 int main(void) {
   srand(time(NULL) ^ (getpid() << 16)); // reset seed
   dmsg("Kernel booting");
@@ -358,7 +345,6 @@ int main(void) {
       read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
 
       if (irq == IRQ_TIME) {
-        semval();
         sem_wait(dispatch_sem);
         dmsg("Kernel got time interrupt");
 

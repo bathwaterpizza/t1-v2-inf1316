@@ -104,19 +104,6 @@ static void send_syscall(syscall_t call) {
   pause();
 }
 
-#ifdef DEBUG
-static inline void semval(void) {
-  int value;
-
-  if (sem_getvalue(dispatch_sem, &value) == -1) {
-    fprintf(stderr, "semval error\n");
-    exit(20);
-  }
-
-  dmsg("Semaphore value: %d", value);
-}
-#endif
-
 int main(int argc, char **argv) {
   // Get IDs from command line
   int shm_id = atoi(argv[1]);
@@ -149,7 +136,7 @@ int main(int argc, char **argv) {
   shm = (int *)shmat(shm_id, NULL, 0);
 
   // Get semaphore created by kernelsim
-  sem_t *dispatch_sem = sem_open(DISPATCH_SEM_NAME, 0);
+  dispatch_sem = sem_open(DISPATCH_SEM_NAME, 0);
   if (dispatch_sem == SEM_FAILED) {
     fprintf(stderr, "Semaphore error\n");
     exit(11);
@@ -164,7 +151,6 @@ int main(int argc, char **argv) {
   while (counter < APP_MAX_PC) {
     usleep((APP_SLEEP_TIME_MS / 2) * 1000);
 
-    semval();
     sem_wait(dispatch_sem);
     if (rand() % 100 < APP_SYSCALL_PROB) {
       send_syscall(rand_syscall());
@@ -182,7 +168,6 @@ int main(int argc, char **argv) {
 
   // update context before exiting
   // write to notify that app finished
-  semval();
   sem_wait(dispatch_sem);
   set_app_syscall(shm, app_id, SYSCALL_APP_FINISHED);
   set_app_counter(shm, app_id, counter);
