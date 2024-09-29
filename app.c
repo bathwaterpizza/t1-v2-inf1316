@@ -68,12 +68,14 @@ static void handle_kernel_cont(int signum) {
   msg("App %d resumed at counter %d", app_id + 1, counter);
 
   // Restore syscall state from shm
+  sem_wait(dispatch_sem);
   if (get_app_syscall(shm, app_id) != SYSCALL_NONE) {
     // announce syscall completed and change status to none
     dmsg("App %d completed syscall: %s", app_id + 1,
          SYSCALL_STR[get_app_syscall(shm, app_id)]);
     set_app_syscall(shm, app_id, SYSCALL_NONE);
   }
+  sem_post(dispatch_sem);
 }
 
 // Called by parent on Ctrl+C.
