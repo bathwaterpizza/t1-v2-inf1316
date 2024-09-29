@@ -106,7 +106,24 @@ static void send_syscall(syscall_t call) {
   pause();
 }
 
+// Called on segfault, necessary in order to show a messsage if it happens
+static void handle_sigsegv(int signum) {
+  dmsg("App %d segmentation fault!", app_id + 1);
+
+  // cleanup
+  close(syscall_pipe_fd[PIPE_WRITE]); // close write
+  shmdt(shm);
+  sem_close(dispatch_sem);
+
+  exit(12);
+}
+
 int main(int argc, char **argv) {
+  assert(argc == 5);
+  dmsg("App %d booting", app_id + 1);
+
+  srand(time(NULL) ^ (getpid() << 16)); // reset seed
+
   // Get IDs from command line
   int shm_id = atoi(argv[1]);
   app_id = atoi(argv[2]);
@@ -115,10 +132,6 @@ int main(int argc, char **argv) {
   syscall_pipe_fd[PIPE_READ] = atoi(argv[3]);
   syscall_pipe_fd[PIPE_WRITE] = atoi(argv[4]);
   close(syscall_pipe_fd[PIPE_READ]); // close read
-
-  dmsg("App %d booting", app_id + 1);
-  assert(argc == 5);
-  srand(time(NULL) ^ (getpid() << 16)); // reset seed
 
   // Register signal callbacks
   if (signal(SIGUSR1, handle_kernel_stop) == SIG_ERR) {
@@ -130,6 +143,10 @@ int main(int argc, char **argv) {
     exit(4);
   }
   if (signal(SIGTERM, handle_sigterm) == SIG_ERR) {
+    fprintf(stderr, "Signal error\n");
+    exit(4);
+  }
+  if (signal(SIGSEGV, handle_sigsegv) == SIG_ERR) {
     fprintf(stderr, "Signal error\n");
     exit(4);
   }
