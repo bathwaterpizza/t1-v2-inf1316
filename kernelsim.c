@@ -142,6 +142,8 @@ static void handle_syscall(int app_id) {
 // Called on Ctrl+C.
 // Terminate children, cleanup and exit
 static void handle_sigint(int signum) {
+  printf("\n");
+  fflush(stdout);
   msg("Kernel stopping from SIGINT");
 
   // kill all apps
@@ -331,7 +333,11 @@ int main(void) {
 
     if (select(max_fd + 1, &fdset, NULL, NULL, NULL) < 0) {
       fprintf(stderr, "Select error\n");
-      exit(10);
+      // exit(10);
+
+      // This error happens when we receive a SIGINT,
+      // so just ignore and proceed to cleanup
+      break;
     }
 
     if (FD_ISSET(apps_pipe_fd[PIPE_READ], &fdset)) {
