@@ -120,13 +120,14 @@ static void handle_sigsegv(int signum) {
 
 int main(int argc, char **argv) {
   assert(argc == 5);
-  dmsg("App %d booting", app_id + 1);
 
   srand(time(NULL) ^ (getpid() << 16)); // reset seed
 
   // Get IDs from command line
   int shm_id = atoi(argv[1]);
   app_id = atoi(argv[2]);
+
+  dmsg("App %d booting", app_id + 1);
 
   // Pipe setup
   syscall_pipe_fd[PIPE_READ] = atoi(argv[3]);
