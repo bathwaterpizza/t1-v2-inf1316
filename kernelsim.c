@@ -204,21 +204,32 @@ static void dispatch(void) {
 
 // Called on SIGUSR1.
 // Pauses or unpauses intersim, the current running app, and the kernelsim.
-// Dumps app info after pausing
+// Dumps apps info after pausing
 static void handle_pause(int signum) {
+  int running_app = get_running_appid();
+
   if (kernel_paused) {
     // unpause
+    if (running_app != -1) {
+      kill(apps[running_app].app_pid, SIGCONT);
+    }
     kill(intersim_pid, SIGCONT);
 
-    return;
+    kernel_paused = false;
+    msg("Kernel resumed");
+  } else {
+    // pause and dump apps info
+    if (running_app != -1) {
+      kill(apps[running_app].app_pid, SIGSTOP);
+    }
+    kill(intersim_pid, SIGSTOP);
+
+    // TODO: dump app info
+
+    kernel_paused = true;
+    msg("Kernel paused");
+    pause();
   }
-
-  // pause
-  kill(intersim_pid, SIGSTOP);
-
-  // TODO: dump app info
-
-  pause();
 }
 
 int main(void) {

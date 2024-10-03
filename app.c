@@ -68,6 +68,7 @@ static inline syscall_t rand_syscall(void) {
 static void handle_kernel_cont(int signum) {
   // Check if it's a SIGCONT from a kernel unpause
   if (app_waiting_syscall_block) {
+    dmsg("App %d resumed from kernel pause", app_id + 1);
     pause();
     return;
   }
