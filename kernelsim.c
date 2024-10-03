@@ -128,8 +128,8 @@ static void handle_syscall(int app_id) {
   }
 
   // Device syscall. Save, block, update stats, enqueue.
-  kill(apps[app_id].app_pid, SIGUSR1); // save state
   apps[app_id].state = BLOCKED;
+  kill(apps[app_id].app_pid, SIGUSR1); // save state
   update_app_stats(call, app_id);
 
   if (call >= SYSCALL_D1_R && call <= SYSCALL_D1_X) {
@@ -215,6 +215,8 @@ static void handle_pause(int signum) {
 
   // pause
   kill(intersim_pid, SIGSTOP);
+
+  // TODO: dump app info
 
   pause();
 }

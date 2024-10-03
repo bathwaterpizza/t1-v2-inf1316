@@ -20,11 +20,15 @@ static int counter = 0;
 static int syscall_pipe_fd[2];
 // Semaphore to avoid a syscall while the dispatcher is making a decision
 static sem_t *dispatch_sem;
+// Used to differentiate kernel unpause SIGCONT from timesharing SIGCONT
+static bool app_waiting_syscall_block = false;
 
 // Called when app receives SIGUSR1 from kernelsim
 // Saves context in shm and raises SIGSTOP
 static void handle_kernel_stop(int signum) {
   msg("App %d stopped at counter %d", app_id + 1, counter);
+
+  app_waiting_syscall_block = false;
 
   // Save program counter state to shm
   set_app_counter(shm, app_id, counter);
@@ -62,6 +66,12 @@ static inline syscall_t rand_syscall(void) {
 // Called when app receives SIGCONT from kernelsim
 // Restores state from shm
 static void handle_kernel_cont(int signum) {
+  // Check if it's a SIGCONT from a kernel unpause
+  if (app_waiting_syscall_block) {
+    pause();
+    return;
+  }
+
   // Restore program counter state from shm
   counter = get_app_counter(shm, app_id);
 
@@ -103,6 +113,7 @@ static void send_syscall(syscall_t call) {
 
   // Wait for SIGUSR1->SIGSTOP
   sem_post(dispatch_sem);
+  app_waiting_syscall_block = true;
   pause();
 }
 
