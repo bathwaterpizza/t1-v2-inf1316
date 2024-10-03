@@ -15,7 +15,9 @@
 #include <unistd.h>
 
 // Whether the kernel is running and reading the interrupt controller pipe
-static bool kernel_running;
+static bool kernel_running = false;
+// Whether the kernel has been paused by a SIGUSR1
+static bool kernel_paused = false;
 // Queue of apps waiting on device D1
 static queue_t *D1_app_queue;
 // Queue of apps waiting on device D2
@@ -200,6 +202,23 @@ static void dispatch(void) {
   }
 }
 
+// Called on SIGUSR1.
+// Pauses or unpauses intersim, the current running app, and the kernelsim.
+// Dumps app info after pausing
+static void handle_pause(int signum) {
+  if (kernel_paused) {
+    // unpause
+    kill(intersim_pid, SIGCONT);
+
+    return;
+  }
+
+  // pause
+  kill(intersim_pid, SIGSTOP);
+
+  pause();
+}
+
 int main(void) {
   srand(time(NULL) ^ (getpid() << 16)); // reset seed
   dmsg("Kernel booting");
@@ -210,6 +229,10 @@ int main(void) {
 
   // Register signal handlers
   if (signal(SIGINT, handle_sigint) == SIG_ERR) {
+    fprintf(stderr, "Signal error\n");
+    exit(4);
+  }
+  if (signal(SIGUSR1, handle_pause) == SIG_ERR) {
     fprintf(stderr, "Signal error\n");
     exit(4);
   }
