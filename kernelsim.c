@@ -204,7 +204,7 @@ static void dispatch(void) {
   }
 }
 
-// Prints proc_info_t for each app
+// Prints proc_info_t and shm state for each app
 static void dump_apps_info(void) {
   for (int i = 0; i < APP_AMOUNT; i++) {
     msg("----------- App %d -----------", i + 1);
