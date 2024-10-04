@@ -160,6 +160,7 @@ static void handle_sigint(int signum) {
   kill(intersim_pid, SIGTERM);
 
   // and exit from main
+  kernel_paused = false;
   kernel_running = false;
 }
 
