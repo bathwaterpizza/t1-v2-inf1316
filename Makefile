@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -lpthread
+CFLAGS = -Wall -lpthread -g
 
 # List of all programs
 PROGRAMS = kernelsim intersim app
