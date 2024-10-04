@@ -204,6 +204,22 @@ static void dispatch(void) {
   }
 }
 
+// Prints proc_info_t for each app
+static void dump_apps_info(void) {
+  for (int i = 0; i < APP_AMOUNT; i++) {
+    msg("----------- App %d -----------", i + 1);
+    msg("Counter        | %d", get_app_counter(shm, i));
+    msg("State          | %s", PROC_STATE_STR[apps[i].state]);
+    msg("Pending call   | %s", SYSCALL_STR[get_app_syscall(shm, i)]);
+    msg("D1/D2 access   | %d / %d", apps[i].D1_access_count,
+        apps[i].D2_access_count);
+    msg("R/W/X requests | %d / %d / %d", apps[i].read_count,
+        apps[i].write_count, apps[i].exec_count);
+  }
+
+  msg("-----------------------------");
+}
+
 // Called on SIGUSR1.
 // Pauses or unpauses intersim, the current running app, and the kernelsim.
 // Dumps apps info after pausing
@@ -226,7 +242,7 @@ static void handle_pause(int signum) {
     }
     kill(intersim_pid, SIGSTOP);
 
-    // TODO: dump app info
+    dump_apps_info();
 
     kernel_paused = true;
     msg("Kernel paused");
