@@ -2,9 +2,8 @@
 
 #define DEBUG // Show debug logging on console
 
-#define APP_AMOUNT 3 // How many application processes should be created
-#define APP_MAX_PC                                                             \
-  100 // Program counter value at which the app process finishes
+#define APP_AMOUNT 3  // How many application processes should be created
+#define APP_MAX_PC 50 // Program counter value at which the app terminates
 #define APP_SLEEP_TIME_MS 500 // How long should one iteration of each app take
 #define APP_SYSCALL_PROB                                                       \
   15 // Percentage chance of app sending a syscall for each iteration

@@ -2,6 +2,7 @@
 #include "types.h"
 #include "util.h"
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -15,9 +16,9 @@
 #include <unistd.h>
 
 // Whether the kernel is running and reading the interrupt controller pipe
-static volatile bool kernel_running = false;
+static volatile sig_atomic_t kernel_running = false;
 // Whether the kernel has been paused by a SIGUSR1
-static volatile bool kernel_paused = false;
+static volatile sig_atomic_t kernel_paused = false;
 // Queue of apps waiting on device D1
 static queue_t *D1_app_queue;
 // Queue of apps waiting on device D2
@@ -371,13 +372,16 @@ int main(void) {
     FD_SET(apps_pipe_fd[PIPE_READ], &fdset);
     FD_SET(interpipe_fd[PIPE_READ], &fdset);
 
-    if (select(max_fd + 1, &fdset, NULL, NULL, NULL) < 0) {
-      fprintf(stderr, "Select error\n");
-      // exit(10);
+    // This handling is necessary in case select gets interrupted by a signal
+    int select_result;
 
-      // This error happens when we receive a SIGINT,
-      // so just ignore and proceed to cleanup
-      break;
+    do {
+      select_result = select(max_fd + 1, &fdset, NULL, NULL, NULL);
+    } while (select_result == -1 && errno == EINTR);
+
+    if (select_result == -1) {
+      fprintf(stderr, "Select error\n");
+      exit(10);
     }
 
     if (FD_ISSET(apps_pipe_fd[PIPE_READ], &fdset)) {

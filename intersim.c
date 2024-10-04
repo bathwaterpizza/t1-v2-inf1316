@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 // Controls whether the main loop continues
-static volatile bool intersim_running;
+static volatile sig_atomic_t intersim_running = false;
 
 // Called by parent on Ctrl+C or all apps finished.
 // Cleanup and exit

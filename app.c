@@ -22,7 +22,7 @@ static int syscall_pipe_fd[2];
 // Semaphore to avoid a syscall while the dispatcher is making a decision
 static sem_t *dispatch_sem;
 // Used to differentiate kernel unpause SIGCONT from timesharing SIGCONT
-static volatile bool app_waiting_syscall_block = false;
+static volatile sig_atomic_t app_waiting_syscall_block = false;
 
 // Called when app receives SIGUSR1 from kernelsim
 // Saves context in shm and raises SIGSTOP
@@ -69,8 +69,12 @@ static inline syscall_t rand_syscall(void) {
 static void handle_kernel_cont(int signum) {
   // Check if it's a SIGCONT from a kernel unpause
   if (app_waiting_syscall_block) {
-    dmsg("App %d resumed from kernel pause", app_id + 1);
-    pause();
+    dmsg("App %d resumed waiting for syscall block", app_id + 1);
+
+    // pause app and don't block SIGCONT
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigsuspend(&mask);
     return;
   }
 
