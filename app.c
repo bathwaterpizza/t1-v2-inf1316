@@ -2,6 +2,7 @@
 #include "types.h"
 #include "util.h"
 #include <assert.h>
+#include <errno.h>
 #include <semaphore.h>
 #include <signal.h>
 #include <stdio.h>
@@ -193,7 +194,21 @@ int main(int argc, char **argv) {
     counter++;
     dmsg("App %d counter increased to %d", app_id + 1, counter);
 
-    usleep((APP_SLEEP_TIME_MS / 2) * 1000);
+    // Sleep according to time set at cfg.h,
+    // Remaining time is restored after a signal is handled
+    struct timespec time_total, time_remaining;
+    time_total.tv_sec = 0;
+    time_total.tv_nsec = APP_SLEEP_TIME_MS * 1000000L;
+
+    while (nanosleep(&time_total, &time_remaining) == -1) {
+      if (errno == EINTR) {
+        // Restore remaining sleep time after a signal
+        time_total = time_remaining;
+      } else {
+        fprintf(stderr, "Nanosleep error\n");
+        exit(13);
+      }
+    }
   }
 
   msg("App %d left main loop", app_id + 1);

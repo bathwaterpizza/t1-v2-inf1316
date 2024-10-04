@@ -2,6 +2,7 @@
 #include "types.h"
 #include "util.h"
 #include <assert.h>
+#include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -42,8 +43,6 @@ int main(int argc, char **argv) {
 
   // Main loop
   while (intersim_running) {
-    usleep((INTERSIM_SLEEP_TIME_MS / 2) * 1000);
-
     // Send timeslice interrupt
     irq_t irq = IRQ_TIME;
     write(interpipe_fd[PIPE_WRITE], &irq, sizeof(irq_t));
@@ -64,7 +63,21 @@ int main(int argc, char **argv) {
       dmsg("Intersim sent device interrupt D%d", irq);
     }
 
-    usleep((INTERSIM_SLEEP_TIME_MS / 2) * 1000);
+    // Sleep according to time set at cfg.h,
+    // Remaining time is restored after a signal is handled
+    struct timespec time_total, time_remaining;
+    time_total.tv_sec = 0;
+    time_total.tv_nsec = INTERSIM_SLEEP_TIME_MS * 1000000L;
+
+    while (nanosleep(&time_total, &time_remaining) == -1) {
+      if (errno == EINTR) {
+        // Restore remaining sleep time after a signal
+        time_total = time_remaining;
+      } else {
+        fprintf(stderr, "Nanosleep error\n");
+        exit(13);
+      }
+    }
   }
 
   dmsg("Intersim left main loop");
