@@ -182,8 +182,6 @@ int main(int argc, char **argv) {
 
   // Main application loop
   while (counter < APP_MAX_PC) {
-    usleep((APP_SLEEP_TIME_MS / 2) * 1000);
-
     sem_wait(dispatch_sem);
     if (rand() % 100 < APP_SYSCALL_PROB) {
       send_syscall(rand_syscall());
