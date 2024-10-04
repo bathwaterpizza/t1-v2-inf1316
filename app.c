@@ -21,7 +21,7 @@ static int syscall_pipe_fd[2];
 // Semaphore to avoid a syscall while the dispatcher is making a decision
 static sem_t *dispatch_sem;
 // Used to differentiate kernel unpause SIGCONT from timesharing SIGCONT
-static bool app_waiting_syscall_block = false;
+static volatile bool app_waiting_syscall_block = false;
 
 // Called when app receives SIGUSR1 from kernelsim
 // Saves context in shm and raises SIGSTOP

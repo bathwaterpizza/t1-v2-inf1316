@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 // Controls whether the main loop continues
-static bool intersim_running;
+static volatile bool intersim_running;
 
 // Called by parent on Ctrl+C or all apps finished.
 // Cleanup and exit

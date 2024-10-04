@@ -15,9 +15,9 @@
 #include <unistd.h>
 
 // Whether the kernel is running and reading the interrupt controller pipe
-static bool kernel_running = false;
+static volatile bool kernel_running = false;
 // Whether the kernel has been paused by a SIGUSR1
-static bool kernel_paused = false;
+static volatile bool kernel_paused = false;
 // Queue of apps waiting on device D1
 static queue_t *D1_app_queue;
 // Queue of apps waiting on device D2
