@@ -228,7 +228,11 @@ static void handle_pause(int signum) {
 
     kernel_paused = true;
     msg("Kernel paused");
-    pause();
+
+    // pause kernelsim and don't block SIGUSR1
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigsuspend(&mask);
   }
 }
 
