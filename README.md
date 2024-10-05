@@ -5,7 +5,9 @@
 ### Compilar e executar
 
 - Ajustar parâmetros desejados no [cfg.h](cfg.h)
+
 `make`
+
 `./kernelsim`
 
 ### Pausar/continuar simulação

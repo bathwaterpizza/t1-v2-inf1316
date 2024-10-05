@@ -106,8 +106,8 @@ static inline bool has_pending_syscall(int app_id) {
   return get_app_syscall(shm, app_id) != SYSCALL_NONE;
 }
 
-// Handles and incoming syscall from the apps pipe
-static void handle_syscall(int app_id) {
+// Handles an incoming syscall from the apps syscall pipe
+static void handle_app_syscall(int app_id) {
   assert(apps[app_id].state == RUNNING);
 
   syscall_t call = get_app_syscall(shm, app_id);
@@ -165,7 +165,7 @@ static void handle_sigint(int signum) {
 }
 
 // Stops current running app and dispatch the next app in queue
-static void dispatch(void) {
+static void dispatch_next_app(void) {
   // Check if we're done
   if (all_apps_finished()) {
     dmsg("Dispatcher: All apps finished");
@@ -254,12 +254,30 @@ static void handle_pause(int signum) {
   }
 }
 
+// Dequeue app from device queue and change its blocked state,
+// then add it to the dispatch queue
+static void unblock_next_app(irq_t irq) {
+  int app_id = (irq == IRQ_D1) ? dequeue(D1_app_queue) : dequeue(D2_app_queue);
+
+  if (app_id == -1) {
+    dmsg("No apps waiting on D%d", irq);
+    return;
+  }
+
+  assert(apps[app_id].state == BLOCKED);
+  apps[app_id].state = PAUSED;
+  enqueue(dispatch_queue, app_id);
+
+  dmsg("Kernel unblocked app %d", app_id + 1);
+}
+
 int main(void) {
   srand(time(NULL) ^ (getpid() << 16)); // reset seed
   dmsg("Kernel booting");
   // Validate some configs
   assert(APP_MAX_PC > 0);
   assert(APP_SLEEP_TIME_MS > 0);
+  assert(INTERSIM_SLEEP_TIME_MS > 0);
   assert(APP_SYSCALL_PROB >= 0 && APP_SYSCALL_PROB <= 100);
 
   // Register signal handlers
@@ -406,36 +424,25 @@ int main(void) {
       // Got syscall from app
       read(apps_pipe_fd[PIPE_READ], &syscall_app_id, sizeof(int));
 
-      handle_syscall(syscall_app_id);
+      handle_app_syscall(syscall_app_id);
     }
     if (FD_ISSET(interpipe_fd[PIPE_READ], &fdset)) {
       // Got interrupt from intersim
       read(interpipe_fd[PIPE_READ], &irq, sizeof(irq_t));
 
       if (irq == IRQ_TIME) {
+        // Time interrupt
         sem_wait(dispatch_sem);
         dmsg("Kernel got time interrupt");
 
-        dispatch();
+        dispatch_next_app();
         sem_post(dispatch_sem);
       } else {
+        // Device interrupt
         assert(irq == IRQ_D1 || irq == IRQ_D2);
-        // Dequeue app from device queue and change its blocked state
-        // Then add it to the dispatch queue
         dmsg("Kernel got device interrupt D%d", irq);
-        int app_id =
-            (irq == IRQ_D1) ? dequeue(D1_app_queue) : dequeue(D2_app_queue);
 
-        if (app_id == -1) {
-          dmsg("No apps waiting on D%d", irq);
-          continue;
-        }
-
-        assert(apps[app_id].state == BLOCKED);
-        apps[app_id].state = PAUSED;
-        enqueue(dispatch_queue, app_id);
-
-        dmsg("Kernel unblocked app %d", app_id + 1);
+        unblock_next_app(irq);
       }
     }
   }
