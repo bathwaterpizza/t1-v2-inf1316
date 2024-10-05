@@ -66,8 +66,8 @@ int main(int argc, char **argv) {
     // Sleep according to time set at cfg.h,
     // Remaining time is restored after a signal is handled
     struct timespec time_total, time_remaining;
-    time_total.tv_sec = 0;
-    time_total.tv_nsec = INTERSIM_SLEEP_TIME_MS * 1000000L;
+    time_total.tv_sec = INTERSIM_SLEEP_TIME_MS / 1000;
+    time_total.tv_nsec = (INTERSIM_SLEEP_TIME_MS % 1000) * 1000000L;
 
     while (nanosleep(&time_total, &time_remaining) == -1) {
       if (errno == EINTR) {

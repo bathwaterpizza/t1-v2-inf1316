@@ -453,6 +453,7 @@ int main(void) {
   sem_unlink(DISPATCH_SEM_NAME);
 
   msg("Kernel finished");
+  sleep(1); // wait for children cleanup
 
   return 0;
 }
