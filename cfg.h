@@ -1,23 +1,27 @@
 #pragma once
 
-#define DEBUG // Show debug logging on console
+// Show debug logging on console
+#define DEBUG
 
-#define APP_AMOUNT 3 // How many application processes should be created
-#define APP_MAX_PC 5 // Program counter value at which the app terminates
-#define APP_SLEEP_TIME_MS 1000 // How long should one iteration of each app take
-#define APP_SYSCALL_PROB                                                       \
-  15 // Percentage chance of app sending a syscall for each iteration
+// How many application processes should be created
+#define APP_AMOUNT 3
+// Program counter value at which the app terminates
+#define APP_MAX_PC 5
+// How long should one counter iteration of each app be
+#define APP_SLEEP_TIME_MS 1000
+// Percentage chance of app sending a syscall for each iteration
+#define APP_SYSCALL_PROB 15
 
-#define INTERSIM_SLEEP_TIME_MS 500 // How long to generate an interrupt
-#define INTERSIM_D1_INT_PROB                                                   \
-  10 // Percentage chance of generating a D1 interrupt for each intersim
-     // iteration
-#define INTERSIM_D2_INT_PROB                                                   \
-  5 // Percentage chance of generating a D2 interrupt for each intersim
-    // iteration
+// How often should we generate a timeslice interrupt
+#define INTERSIM_SLEEP_TIME_MS 500
+// Percentage chance of generating a D1/D2 interrupt for each intersim iteration
+#define INTERSIM_D1_INT_PROB 10
+#define INTERSIM_D2_INT_PROB 5
 
-#define APP_SHM_SIZE (sizeof(int) * 2)       // Size of shm for each app process
-#define SHM_SIZE (APP_SHM_SIZE * APP_AMOUNT) // Total size of shm segment
+// Size of shm for each app process
+#define APP_SHM_SIZE (sizeof(int) * 2)
+// Total size of shm segment
+#define SHM_SIZE (APP_SHM_SIZE * APP_AMOUNT)
 
-#define DISPATCH_SEM_NAME                                                      \
-  "/kernelsim_dispatch_sem" // Name of dispatch semaphore
+// Name of dispatch semaphore
+#define DISPATCH_SEM_NAME "/kernelsim_dispatch_sem"
