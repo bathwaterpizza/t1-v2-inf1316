@@ -32,4 +32,22 @@ Além disso, utilizamos o SIGUSR1 no kernelsim para pausar e continuar a simula�
 
 ### Memória compartilhada
 
+Para cada app, o kernel aloca dois inteiros em shm. O primeiro armazena o estado de seu Program Counter, e o segundo armazena uma eventual syscall pendente, mas que também utilizamos para informar ao kernel que o app terminou sua execução. Essa shm é efetivamente nossa interpretação do kernel salvando o contexto do app, tanto que forçamos a perda dos dados imediatamente após salvar o contexto, no momento em que um app é interrompido pelo scheduler:
+
+```C
+static void handle_kernel_stop(int signum) {
+  (...)
+  // Save program counter state to shm
+  set_app_counter(shm, app_id, counter);
+
+  // Simulate data loss
+  counter = 0;
+  (...)
+}
+```
+
+Em alguns casos, o acesso a shm estava gerando segfaults, por exemplo em uma situação na qual o kernel tenta verificar a syscall pendente de um app para tomar uma decisão de dispatching, no momento em que o mesmo a modifica. Resolvemos isso encapsulando a função de dispatch e as escritas na parte de syscall da shm com um semáforo.
+
+## Testes
+
 todo
