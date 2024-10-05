@@ -24,7 +24,7 @@ Os dados enviados através dos pipes são apenas inteiros com significados espec
 
 ### Sinais
 
-O dispatcher utiliza sinais para parar e continuar a execução dos apps conforme sugerido, mas na verdade enviamos um SIGUSR1 como stop aos apps, cujo handler em seguida salva seu contexto com o kernel e levanta um SIGSTOP para si próprio. Se utilizássemos o SIGSTOP diretamente, não haveria como cadastrar um handler para salvar contexto, pois é um dos sinais não mascaráveis do SO.
+O dispatcher utiliza sinais para parar e continuar a execução dos apps conforme sugerido, mas na verdade enviamos um SIGUSR1 como stop aos apps, cujo handler em seguida salva seu contexto com o kernel e envia um SIGSTOP para si próprio. Se utilizássemos o SIGSTOP diretamente, não haveria como cadastrar um handler para salvar contexto, pois é um dos sinais não-mascaráveis do SO.
 
 Todos os programas também possuem handlers de SIGINT ou SIGTERM, para os encerrar com um cleanup adequado. Os apps possuem um handler de SIGSEGV para debug, como segfaults de children não são anunciadas no stdout ou stderr por padrão.
 
@@ -53,6 +53,10 @@ Em alguns casos, o acesso a shm estava gerando segfaults, por exemplo em uma sit
 Ao receber o `IRQ_TIME` do intersim, o kernel executa nosso dispatcher, que funciona conforme um round-robin: o app em execução é pausado e inserido na fila de espera, e o próximo da fila é continuado. Apps que pedirem syscalls são bloqueados e entram na fila de um dispositivo, até a chegada de um `IRQ_D1` ou `IRQ_D2` correspondente os liberar, e então são inseridos na fila de espera.
 
 Como mencionado anteriormente, foi importante encapsular o dispatcher em um semáforo que garante sua execução não concorrente com a decisão de pedido de syscall do app em execução, para evitar condições de corrida. Outro detalhe é que o dispatcher precisa checar uma série de edge cases, por exemplo quando não há um app a ser continuado (todos bloqueados por syscalls), ou quando o chaveamento não é necessário (apenas um app está disponível para execução).
+
+## Módulo util
+
+São algumas funções compartilhadas entre os programas do simulador. Criamos o `msg` e o `dmsg` para adicionar um prefixo de timestamp em todas mensagens, e utilizamos o `fflush()` ao fim de cada uma para garantir que não há delays por bufferização. As funções de get e set são apenas uma forma conveniente de acessar a shm entre os apps e o kernel, sem precisar reescrever o cálculo de offset. Por fim, as funções de queue são uma implementação simples que aproveitamos da disciplina de EDA, para as filas de espera do sistema.
 
 ## Testes
 
