@@ -6,13 +6,13 @@
 
 - Ajustar parâmetros desejados no [cfg.h](cfg.h)
 
-`make`
+- `make`
 
-`./kernelsim`
+- `./kernelsim`
 
 ### Pausar/continuar simulação
 
-`pkill -SIGUSR1 kernelsim`
+- `pkill -SIGUSR1 kernelsim`
 
 ## Escolhas de IPC
 
