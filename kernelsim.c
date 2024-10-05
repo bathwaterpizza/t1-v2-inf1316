@@ -102,6 +102,7 @@ static int amount_apps_not_ready(void) {
   return count;
 }
 
+// Whether an app has a pending syscall request in shm
 static inline bool has_pending_syscall(int app_id) {
   return get_app_syscall(shm, app_id) != SYSCALL_NONE;
 }
