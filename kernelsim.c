@@ -273,14 +273,15 @@ int main(void) {
   }
 
   // Allocate shared memory to store app states (simulating a snapshot)
-  int shm_id = shmget(IPC_PRIVATE, SHM_SIZE, IPC_CREAT | S_IRWXU);
+  int shm_id =
+      shmget(IPC_PRIVATE, sizeof(int) * 2 * APP_AMOUNT, IPC_CREAT | S_IRWXU);
   if (shm_id < 0) {
     fprintf(stderr, "Shm alloc error\n");
     exit(3);
   }
 
   shm = (int *)shmat(shm_id, NULL, 0);
-  memset(shm, 0, SHM_SIZE);
+  memset(shm, 0, sizeof(int) * 2 * APP_AMOUNT);
 
   // Create semaphore for avoiding race conditions
   sem_unlink(DISPATCH_SEM_NAME); // remove any existing semaphore
