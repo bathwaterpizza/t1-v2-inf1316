@@ -48,6 +48,17 @@ static void handle_kernel_stop(int signum) {
 
 Em alguns casos, o acesso a shm estava gerando segfaults, por exemplo em uma situação na qual o kernel tenta verificar a syscall pendente de um app para tomar uma decisão de dispatching, no momento em que o mesmo a modifica. Resolvemos isso encapsulando a função de dispatch e as escritas na parte de syscall da shm com um semáforo.
 
+## Time-sharing
+
+Ao receber o `IRQ_TIME` do intersim, o kernel executa nosso dispatcher, que funciona conforme um round-robin: o app em execução é pausado e inserido na fila de espera, e o próximo da fila é continuado. Apps que pedirem syscalls são bloqueados e entram na fila de um dispositivo, até a chegada de um `IRQ_D1` ou `IRQ_D2` correspondente os liberar, e então são inseridos na fila de espera.
+
+Como mencionado anteriormente, foi importante encapsular o dispatcher em um semáforo que garante sua execução não concorrente com a decisão de pedido de syscall do app em execução, para evitar condições de corrida. Outro detalhe é que o dispatcher precisa checar uma série de edge cases, por exemplo quando não há um app a ser continuado (todos bloqueados por syscalls), ou quando o chaveamento não é necessário (apenas um app está disponível para execução).
+
 ## Testes
 
-todo
+TODO
+- asserts
+- mensagens de debug com timestamp fração de segundos
+- testes com valores limite de probabilidades
+- testes de estresse com sleeps muito curtos, várias aplicações e número alto para o PC
+- compilado com -g para attach do gdb
