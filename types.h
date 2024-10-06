@@ -1,5 +1,23 @@
 #pragma once
 
+/* Exit code errors
+
+1 : log file error
+2 : fork error
+3 : shm error
+4 : signal error
+5 : rand_syscall error
+6 : malloc error
+7 : update_app_stats error
+8 : pipe error
+9 : signal blocking error
+10: select error
+11: semaphore error
+12: app segfault
+13: nanosleep error
+
+*/
+
 #include <stdbool.h>
 #include <sys/types.h>
 
