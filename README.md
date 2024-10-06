@@ -1,5 +1,7 @@
 # Relatório do T1
 
+Neste relatório, procuramos explicar as principais decisões de projeto que foram tomadas para implementar com sucesso o simulador pedido no enunciado do trabalho. O resultado foi uma aplicação robusta, que atendeu aos requisitos e satisfez todos os nossos testes.
+
 ## Instruções
 
 ### Compilar e executar
@@ -28,7 +30,7 @@ O dispatcher utiliza sinais para parar e continuar a execução dos apps conform
 
 Todos os programas também possuem handlers de SIGINT ou SIGTERM, para os encerrar com um cleanup adequado. Os apps possuem um handler de SIGSEGV para debug, como segfaults de children não são anunciadas no stdout ou stderr por padrão.
 
-Além disso, utilizamos o SIGUSR1 no kernelsim para pausar e continuar a simulação. Ao receber o sinal, o kernel pausa todos os outros processos do sistema simulado, e mostra um dump do estado de cada app. Foram necessários vários ajustes para essa funcionalidade não interferir no funcionamento do sistema, como o uso da versão thread-safe de localtime em nossa função `msg()`, e o handling do erro `EINTR` que ocorre quando uma syscall é interrompida por um interrupt de sinal.
+Além disso, utilizamos o SIGUSR1 no kernelsim para pausar e continuar a simulação. Ao receber o sinal, o kernel pausa todos os outros processos do sistema simulado, e mostra um dump do estado de cada app. Foram necessários vários ajustes para essa funcionalidade não interferir no funcionamento do sistema, como o uso da versão thread-safe de localtime em nossa função `msg()`, e o handling do erro `EINTR` que ocorre quando uma syscall é interrompida por um sinal.
 
 ### Memória compartilhada
 
@@ -56,13 +58,18 @@ Como mencionado anteriormente, foi importante encapsular o dispatcher em um sem�
 
 ## Módulo util
 
-São algumas funções compartilhadas entre os programas do simulador. Criamos o `msg` e o `dmsg` para adicionar um prefixo de timestamp em todas mensagens, e utilizamos o `fflush()` ao fim de cada uma para garantir que não há delays por bufferização. As funções de get e set são apenas uma forma conveniente de acessar a shm entre os apps e o kernel, sem precisar reescrever o cálculo de offset. Por fim, as funções de queue são uma implementação simples que aproveitamos da disciplina de EDA, para as filas de espera do sistema.
+São algumas funções compartilhadas entre os programas do simulador.
+
+- Criamos o `msg` e o `dmsg` para adicionar um prefixo de timestamp em todas mensagens, e utilizamos o `fflush()` ao fim de cada uma para garantir que não há delays por bufferização.
+- As funções de get e set são apenas uma forma conveniente de acessar a shm entre os apps e o kernel, sem precisar reescrever o cálculo de offset.
+- As funções do TAD de queue são uma implementação simples que aproveitamos da disciplina de EDA, para as filas de espera do sistema.
 
 ## Testes
 
-TODO
-- asserts
-- mensagens de debug com timestamp fração de segundos
-- testes com valores limite de probabilidades
-- testes de estresse com sleeps muito curtos, várias aplicações e número alto para o PC
-- compilado com -g para attach do gdb
+Como a grande maioria dos erros provém de problemas de concorrência aleatórios, e não erros determinísticos a partir de parâmetros, decidimos testar a aplicação manualmente durante todo o desenvolvimento, a cada nova funcionalidade implementada no simulador.
+
+Uma parte importante foi o esforço para entender o que está acontecendo durante a execução, o que alcançamos através do uso de asserts e prints não bufferizados de debug, com timestamps de precisão em milissegundos, em pontos chave de todo o programa. Os binários também foram compilados com a opção `-g`, de maneira que podemos dar attach com o gdb a qualquer um dos processos em execução, para investigar travamentos e estados inesperados. Essa análise com o gdb foi crucial para, por exemplo, entender que a função `pause()` estava bloqueando nosso pause handler de receber outros sinais, o que nos levou à troca pela função `sigsuspend()`, que não altera a máscara de sinais do processo.
+
+Sobre os testes em si, a cada alteração no programa nós executamos dois tipos de cfg: um lento (1000ms para o app sleep e 500ms para o intersim) com 3 apps e 10 para o max PC, o que nos possibilita visualizar os passos individuais do simulador com calma, e outro rápido (20ms para o app sleep e 10ms para o intersim), com 10 apps e 1000 para o program counter, como uma espécie de teste de estresse. Isso nos permitiu identificar erros que ocorrem raramente em apenas uma das situações acima.
+
+Por fim, realizamos alguns testes de valor limite com as probabilidades, para verificar que a simulação estava reagindo corretamente às mudanças.
